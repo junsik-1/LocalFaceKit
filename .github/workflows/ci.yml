@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: macos-15
@@ -15,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Swift version
         run: swift --version
+      - name: Enforce local-only runtime
+        run: Scripts/check-local-only.sh
       - name: Build and test
         run: swift test
       - name: Build for iOS Simulator

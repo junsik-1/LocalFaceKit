@@ -4,14 +4,14 @@
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-iPadOS에서 서버 없이 얼굴 감지와 인식을 구현하기 위한 프라이버시 우선 Swift 패키지입니다.
+Face ID가 없는 iPad의 일반 전면 RGB 카메라만으로 얼굴 감지와 인식을 구현하기 위한 프라이버시 우선 Swift 패키지입니다.
 
 [English](README.md)
 
-LocalFaceKit은 카메라 프레임이나 생체 템플릿을 외부 서버로 전송하지 않고 얼굴 감지, 랜드마크 추출, 임베딩, 1:1 검증 및 1:N 식별 워크플로를 구성할 수 있게 합니다.
+LocalFaceKit은 일반 전면 RGB 카메라를 사용하며 카메라 프레임, 모델, 생체 템플릿, 판정 결과를 앱 샌드박스 밖으로 전송하지 않습니다. 얼굴 감지, 랜드마크 추출, 임베딩, 1:1 검증 및 1:N 식별을 모두 로컬에서 수행합니다.
 
 > [!WARNING]
-> 이 프로젝트는 초기 단계입니다. Apple Face ID가 아니며 Face ID 등록 데이터에 접근하지 않습니다. 고위험 인증의 유일한 수단으로 사용하면 안 됩니다.
+> 이 프로젝트는 Face ID 하드웨어가 없는 iPad를 대상으로 하는 초기 단계 프로젝트입니다. 일반 RGB 카메라만 사용하며 고위험 인증의 유일한 수단으로 사용하면 안 됩니다.
 
 ## 현재 구현
 
@@ -24,8 +24,10 @@ LocalFaceKit은 카메라 프레임이나 생체 템플릿을 외부 서버로 �
 - AES-GCM 암호화 템플릿 저장소
 - 기기 한정 Keychain 암호화 키
 - Privacy Manifest와 자동화 테스트
+- 최신 프레임 하나만 유지하는 일반 전면 RGB 카메라 스트림
+- 런타임 네트워크 API를 거부하는 CI 검사
 
-다음 단계는 카메라 프레임 스케줄러, 5점 얼굴 정렬, 품질 필터, 시간축 합의, TrueDepth 및 ARKit 라이브니스 신호, iPad 샘플 앱입니다.
+다음 단계는 5점 얼굴 정렬, 품질 필터, 시간축 합의, RGB 챌린지 기반 라이브니스 신호, iPad 샘플 앱입니다.
 
 저장소에는 사전 학습 얼굴 모델이나 실제 얼굴 데이터셋을 포함하지 않습니다. 모델 가중치는 별도의 재배포 권리와 데이터 출처 검토가 필요합니다.
 
@@ -35,7 +37,7 @@ LocalFaceKit은 카메라 프레임이나 생체 템플릿을 외부 서버로 �
 - Swift 6 이상
 - Xcode 16 이상
 - 실시간 임베딩은 A12 Bionic 이상 권장
-- 카메라와 ARKit 검증에는 실제 iPad 필요
+- 카메라와 성능 검증에는 일반 전면 카메라가 있는 실제 iPad 필요
 
 ## 설치
 
@@ -50,6 +52,21 @@ https://github.com/junsik-1/LocalFaceKit.git
 ```xml
 <key>NSCameraUsageDescription</key>
 <string>얼굴 감지를 위해 카메라 프레임을 이 기기에서 처리합니다.</string>
+```
+
+패키지는 전면 광각 또는 초광각 RGB 카메라만 검색하며 TrueDepth 카메라를 선택하지 않습니다.
+
+## 일반 전면 RGB 카메라
+
+```swift
+let camera = try RGBFrontCameraSource.make()
+guard await RGBFrontCameraSource.requestAccess() else { return }
+
+try await camera.start()
+for await frame in camera.frames {
+    let faces = try await analyzer.analyze(pixelBuffer: frame.pixelBuffer)
+    // 프레임은 로컬에서 처리하고 보관하지 않습니다.
+}
 ```
 
 ## 얼굴과 랜드마크 분석
@@ -121,7 +138,7 @@ let store = EncryptedFileTemplateStore(
 
 호스트 앱은 사용자 동의, 보존 기간, 삭제 UI, 접근 통제를 제공해야 합니다. 자세한 내용은 [PRIVACY.md](PRIVACY.md), [SECURITY.md](SECURITY.md), [아키텍처](docs/ARCHITECTURE.md)를 참고하세요.
 
-민감한 작업에는 얼굴 매칭 결과와 별개로 Apple `LocalAuthentication` 또는 다른 인증 요소를 사용하세요.
+민감한 작업에는 얼굴 매칭 결과와 별개로 암호 등 다른 인증 요소를 사용하세요. RGB 기반 라이브니스만으로 사진이나 영상 재생 공격을 완전히 막을 수는 없습니다.
 
 ## 개발
 

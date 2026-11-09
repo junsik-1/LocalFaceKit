@@ -5,8 +5,8 @@ LocalFaceKit separates camera access, face analysis, embedding, matching, livene
 ## Design goals
 
 1. Camera frames and biometric templates never require a server.
-2. RGB front cameras provide the baseline path on every supported iPad.
-3. TrueDepth and ARKit are optional capabilities, not hard dependencies.
+2. An ordinary front RGB camera is the only capture path.
+3. Face ID, TrueDepth, ARKit, cloud APIs, and runtime model downloads are out of scope.
 4. Model preprocessing, output dimension, and thresholds are versioned together.
 5. Raw frames are ephemeral; only explicitly enrolled embeddings are persisted.
 6. Slow analysis never creates an unbounded frame backlog.
@@ -16,9 +16,7 @@ LocalFaceKit separates camera access, face analysis, embedding, matching, livene
 ```text
 LocalFaceKit
 ├── Capture
-│   ├── AVFoundationCameraSource
-│   ├── TrueDepthCameraSource
-│   └── ARKitFaceSource
+│   └── RGBFrontCameraSource
 ├── Vision
 │   ├── VisionFaceAnalyzer
 │   ├── FaceTracker
@@ -30,8 +28,7 @@ LocalFaceKit
 │   ├── FaceRecognitionService
 │   └── CosineFaceMatcher
 ├── Liveness
-│   ├── DepthSignalEvaluator
-│   └── ARKitChallengeEvaluator
+│   └── RGBChallengeEvaluator
 └── Storage
     ├── EncryptedFileTemplateStore
     └── KeychainKeyStore
@@ -67,19 +64,11 @@ The scheduler has a capacity of one pending frame. If inference is busy, the new
 
 ## Capture backends
 
-### RGB baseline
+### RGB-only capture
 
-Use `AVCaptureVideoDataOutput` and the front camera. Set `alwaysDiscardsLateVideoFrames` and process buffers on a dedicated serial executor. Detection runs periodically; tracking and a region of interest reduce work between detections.
+Use `AVCaptureVideoDataOutput` with a front wide-angle or ultra-wide RGB camera. `RGBFrontCameraSource` deliberately excludes `.builtInTrueDepthCamera`, keeps only the newest pending frame, and processes buffers on a dedicated serial queue. Detection runs periodically; tracking and a region of interest reduce work between detections.
 
-### TrueDepth
-
-When actual depth is required, select `.builtInTrueDepthCamera` explicitly and synchronize `AVCaptureVideoDataOutput` with `AVCaptureDepthDataOutput`. Device capability and active depth formats must be checked at runtime.
-
-Depth can reject simple planar presentation attacks, but it is not a proof of liveness and does not reproduce Face ID security.
-
-### ARKit
-
-Use `ARFaceTrackingConfiguration` only when pose, mesh, eye transforms, or blend shapes add value. Consume the camera image from the same AR session rather than starting a competing AVFoundation session.
+No alternative capture backend is planned. This keeps behavior consistent on iPads without Face ID hardware.
 
 ## Analysis and alignment
 
@@ -91,7 +80,7 @@ Quality gates should reject:
 - faces that occupy too little of the frame
 - excessive yaw, pitch, or roll
 - blur, clipping, severe occlusion, or poor illumination
-- inconsistent depth where depth is available
+- frames that fail an optional RGB challenge-response check
 
 Every model package needs metadata for color order, normalization, alignment landmarks, input size, output dimension, model identifier, and calibrated thresholds.
 
@@ -113,7 +102,7 @@ Templates from different `modelIdentifier` values are never compared. A changed 
 
 A live decision should combine several recent quality-approved frames—for example, three positive results within the last five eligible frames. Cooldowns prevent one face from emitting repeated application events.
 
-Liveness signals enter the temporal decision separately from identity similarity. They must not be folded into an undocumented magic score.
+RGB challenge-response signals enter the temporal decision separately from identity similarity. They must not be folded into an undocumented magic score, and they do not prove liveness.
 
 ## Concurrency
 
@@ -128,7 +117,13 @@ Liveness signals enter the temporal decision separately from identity similarity
 
 `EncryptedFileTemplateStore` serializes versioned templates, encrypts them using AES-GCM, and writes atomically. `KeychainKeyStore` creates a 256-bit key using `WhenUnlockedThisDeviceOnly`.
 
-Applications may additionally protect the key with `SecAccessControl` and `LocalAuthentication`. That policy belongs to the host application because unattended kiosks and personal devices have different access requirements.
+Applications may additionally require a local passcode before accessing enrollment or deletion controls. That policy belongs to the host application because unattended kiosks and personal devices have different requirements.
+
+## Local-only boundary
+
+The package has no networking dependency or runtime networking API. Core ML models must be supplied as local file URLs, and templates are stored only in memory or in the encrypted application file selected by the host app. CI scans Swift sources for common Apple networking APIs.
+
+The host application can still add network capabilities. A product that promises offline operation must audit its complete dependency graph and must bundle the model in the signed application rather than downloading it after installation.
 
 ## Performance targets
 

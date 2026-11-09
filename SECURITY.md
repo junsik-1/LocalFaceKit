@@ -8,11 +8,11 @@ Until a dedicated security contact is configured, use GitHub's private vulnerabi
 
 ## Scope and guarantees
 
-LocalFaceKit is not Face ID and cannot access Apple's enrolled biometric data. Similarity matching and optional liveness heuristics do not provide a Secure Enclave-backed authentication guarantee.
+LocalFaceKit targets iPads without Face ID and uses only their ordinary front RGB camera. Similarity matching and optional RGB liveness heuristics do not provide a Secure Enclave-backed authentication guarantee.
 
 For high-value actions:
 
-- require `LocalAuthentication`, a passcode, or another independent factor;
+- require a passcode or another independent factor;
 - rate-limit failures and provide a recovery path;
 - calibrate thresholds from representative evaluation data;
 - detect model and template version mismatches;
@@ -29,4 +29,4 @@ For high-value actions:
 
 ## Presentation attacks
 
-RGB blink detection, ARKit blend shapes, and TrueDepth consistency checks are signals, not proofs. Printed photos, replayed videos, screen reflections, masks, and sensor-specific attacks must be included in threat modeling and testing.
+RGB blink or head-turn checks are signals, not proofs. Printed photos, replayed videos, screen reflections, masks, and camera-specific attacks must be included in threat modeling and testing.

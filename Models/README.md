@@ -2,6 +2,8 @@
 
 This directory intentionally contains no face-recognition weights.
 
+Production applications must bundle an authorized model in the signed app. `CoreMLFaceEmbedder` rejects non-file URLs, and LocalFaceKit contains no model downloader.
+
 ## Recommended contract
 
 | Property | Initial recommendation |

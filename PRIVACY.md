@@ -7,7 +7,6 @@ LocalFaceKit is designed for fully on-device processing. The package contains no
 Depending on the host application, the pipeline may handle:
 
 - transient RGB camera frames
-- transient depth maps
 - face rectangles and landmarks
 - face embeddings and enrollment templates
 - pseudonymous subject identifiers
@@ -33,8 +32,7 @@ Applications must provide:
 4. deletion and re-enrollment controls;
 5. a policy for failed or withdrawn consent;
 6. local-law and sector-specific review;
-7. a privacy policy when ARKit face tracking is used;
-8. protection against screenshots, logs, crash reports, and debug exports leaking biometric data.
+7. protection against screenshots, logs, crash reports, and debug exports leaking biometric data.
 
 Use random local identifiers instead of names or email addresses. Do not store frames merely to debug production failures. Do not upload embeddings in support tickets.
 

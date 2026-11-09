@@ -17,6 +17,9 @@ public actor CoreMLFaceEmbedder {
     outputName: String = "embedding",
     computeUnits: MLComputeUnits = .all
   ) throws {
+    guard modelURL.isFileURL else {
+      throw CoreMLFaceEmbedderError.modelMustBeLocal
+    }
     let configuration = MLModelConfiguration()
     configuration.computeUnits = computeUnits
     self.model = try MLModel(contentsOf: modelURL, configuration: configuration)
@@ -42,5 +45,6 @@ public actor CoreMLFaceEmbedder {
 }
 
 public enum CoreMLFaceEmbedderError: Error, Equatable, Sendable {
+  case modelMustBeLocal
   case missingOutput(String)
 }

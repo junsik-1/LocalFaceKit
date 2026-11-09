@@ -4,14 +4,14 @@
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-Privacy-first, on-device face detection and recognition building blocks for iPadOS.
+Privacy-first, RGB-only face detection and recognition building blocks for iPads without Face ID.
 
 [한국어 문서](README.ko.md)
 
-LocalFaceKit is an open-source Swift package for building face detection, landmark extraction, embedding, verification, and identification workflows without sending camera frames or biometric templates to a server.
+LocalFaceKit is an open-source Swift package for building face detection, landmark extraction, embedding, verification, and identification workflows on iPads with an ordinary front RGB camera. Camera frames, models, templates, and decisions remain local to the application sandbox.
 
 > [!WARNING]
-> LocalFaceKit is an early-stage project. It is not Apple Face ID, does not access Face ID enrollment data, and must not be used as the only factor for high-risk authentication.
+> LocalFaceKit is an early-stage project for iPads without Face ID hardware. It uses only the ordinary front RGB camera and must not be used as the only factor for high-risk authentication.
 
 ## Project status
 
@@ -26,14 +26,14 @@ Implemented:
 - AES-GCM encrypted template persistence
 - device-local Keychain key generation
 - privacy manifest and automated tests
+- bounded ordinary front RGB camera stream
+- CI guard that rejects runtime networking APIs
 
 Planned:
 
-- camera frame source and bounded frame scheduler
 - five-point face alignment and quality gates
 - temporal consensus over live frames
-- optional synchronized TrueDepth input
-- optional ARKit pose and challenge-response liveness signals
+- optional RGB challenge-response liveness signals
 - iPad demo application and on-device benchmarks
 
 The repository intentionally contains **no pretrained face model or real face dataset**. Model weights require their own redistribution and data-provenance review.
@@ -44,7 +44,7 @@ The repository intentionally contains **no pretrained face model or real face da
 - Swift 6+
 - Xcode 16+
 - A12 Bionic or newer recommended for real-time embedding
-- a physical iPad for camera, ARKit, and performance testing
+- a physical iPad with a front RGB camera for camera and performance testing
 
 macOS 14+ is supported for library tests and offline development.
 
@@ -56,7 +56,7 @@ Add the package in Xcode, or include it in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/junsik-1/LocalFaceKit.git",
-        from: "0.1.0"
+        from: "0.2.0"
     )
 ]
 ```
@@ -67,6 +67,8 @@ Add a camera usage description to the host application's `Info.plist`:
 <key>NSCameraUsageDescription</key>
 <string>Camera frames are processed on this device for face detection.</string>
 ```
+
+The package deliberately discovers only front wide-angle or ultra-wide RGB cameras. It never selects a TrueDepth camera.
 
 ## Quick start
 
@@ -89,6 +91,19 @@ for face in faces {
 ```
 
 Vision bounding boxes use normalized image coordinates. Keep inference orientation separate from preview mirroring and test every supported iPad orientation.
+
+### Stream ordinary front RGB frames
+
+```swift
+let camera = try RGBFrontCameraSource.make()
+guard await RGBFrontCameraSource.requestAccess() else { return }
+
+try await camera.start()
+for await frame in camera.frames {
+    let faces = try await analyzer.analyze(pixelBuffer: frame.pixelBuffer)
+    // Process locally. Do not retain the source frame.
+}
+```
 
 ### Load a Core ML embedding model
 
@@ -163,16 +178,12 @@ flowchart LR
     F --> G[L2 normalization]
     G --> H[1:1 or 1:N matcher]
     I[Encrypted local templates] --> H
-    J[Optional TrueDepth / ARKit] --> K[Liveness signals]
+    J[Optional RGB challenge] --> K[Liveness signals]
     K --> L[Temporal decision]
     H --> L
 ```
 
-The production design uses mutually exclusive capture backends:
-
-- `AVFoundation + Vision` for all supported iPads
-- synchronized `AVFoundation RGB + depth` when actual TrueDepth data is needed
-- `ARKit` when face pose, mesh, or blend-shape signals are needed
+The production design has one capture path: `AVFoundation RGB camera → Vision → Core ML`. Depth cameras and ARKit are intentionally outside the project scope.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for module boundaries and the full data flow.
 
@@ -181,6 +192,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for module boundaries and the f
 - no networking or analytics dependency
 - no cloud API
 - no model download at runtime
+- no non-file Core ML model URL
 - no source image persistence by the package
 - encrypted biometric templates
 - pseudonymous subject identifiers recommended
@@ -188,7 +200,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for module boundaries and the f
 
 Face embeddings are biometric data even when the original image cannot be trivially reconstructed. Read [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md) before integrating the package.
 
-For sensitive actions, gate the result with Apple's `LocalAuthentication` or another independent factor. RGB or depth liveness heuristics do not guarantee protection against presentation attacks.
+For sensitive actions, require a passcode or another independent factor. RGB liveness heuristics do not guarantee protection against presentation attacks.
 
 ## Development
 
