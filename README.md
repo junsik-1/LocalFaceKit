@@ -27,6 +27,7 @@ Implemented:
 - device-local Keychain key generation
 - privacy manifest and automated tests
 - bounded ordinary front RGB camera stream
+- SwiftUI face-scanning screen with progress, guidance, and result states
 - CI guard that rejects runtime networking APIs
 
 Planned:
@@ -104,6 +105,31 @@ for await frame in camera.frames {
     // Process locally. Do not retain the source frame.
 }
 ```
+
+### Present the face-scanning UI
+
+`FaceScanView` follows the familiar structure of a biometric scan—camera preview, rounded face guide, animated scan line, progress, and a success or retry state—while remaining visually distinct from Apple's system Face ID screen.
+
+```swift
+@State private var scanState: FaceScanState = .ready
+
+FaceScanView(
+    cameraSource: camera,
+    state: $scanState,
+    strings: .korean
+)
+```
+
+Drive the UI from your pipeline:
+
+```swift
+scanState = .positioning
+scanState = .scanning(progress: 0.65)
+scanState = .success
+// or: .failure(message: "얼굴을 다시 맞춰주세요")
+```
+
+The view never invokes Face ID and does not use Apple's Face ID glyph. It labels the operation as local face verification and displays an on-device-only privacy message.
 
 ### Load a Core ML embedding model
 

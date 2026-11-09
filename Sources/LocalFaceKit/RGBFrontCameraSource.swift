@@ -20,6 +20,8 @@ public final class RGBFrontCameraSource: NSObject, @unchecked Sendable {
   private let sessionQueue = DispatchQueue(label: "LocalFaceKit.RGBFrontCamera")
   private let output = AVCaptureVideoDataOutput()
 
+  var previewSession: AVCaptureSession { session }
+
   private override init() {
     let stream = AsyncStream.makeStream(
       of: RGBFrame.self,

@@ -29,9 +29,13 @@ LocalFaceKit
 │   └── CosineFaceMatcher
 ├── Liveness
 │   └── RGBChallengeEvaluator
-└── Storage
-    ├── EncryptedFileTemplateStore
-    └── KeychainKeyStore
+├── Storage
+│   ├── EncryptedFileTemplateStore
+│   └── KeychainKeyStore
+└── UI
+    ├── RGBFaceCameraView
+    ├── FaceScanOverlay
+    └── FaceScanView
 ```
 
 The initial package keeps these components in one target while public APIs settle. They can become separate products if compile time or optional framework linkage warrants it.
@@ -124,6 +128,12 @@ Applications may additionally require a local passcode before accessing enrollme
 The package has no networking dependency or runtime networking API. Core ML models must be supplied as local file URLs, and templates are stored only in memory or in the encrypted application file selected by the host app. CI scans Swift sources for common Apple networking APIs.
 
 The host application can still add network capabilities. A product that promises offline operation must audit its complete dependency graph and must bundle the model in the signed application rather than downloading it after installation.
+
+## Scan UI
+
+`FaceScanView` presents the RGB preview behind a rounded face guide, animated scan line, progress stroke, status guidance, success check, and retry state. The interaction is inspired by familiar biometric enrollment patterns but does not use the Face ID glyph, claim to invoke Face ID, or imitate a system authentication sheet.
+
+The recognition pipeline owns `FaceScanState`. UI state is never treated as proof of identity; it reflects detector quality, embedding progress, temporal consensus, and final policy decisions produced elsewhere.
 
 ## Performance targets
 

@@ -25,6 +25,7 @@ LocalFaceKit은 일반 전면 RGB 카메라를 사용하며 카메라 프레임,
 - 기기 한정 Keychain 암호화 키
 - Privacy Manifest와 자동화 테스트
 - 최신 프레임 하나만 유지하는 일반 전면 RGB 카메라 스트림
+- 안내, 진행률, 성공·재시도 상태를 제공하는 SwiftUI 얼굴 스캔 화면
 - 런타임 네트워크 API를 거부하는 CI 검사
 
 다음 단계는 5점 얼굴 정렬, 품질 필터, 시간축 합의, RGB 챌린지 기반 라이브니스 신호, iPad 샘플 앱입니다.
@@ -68,6 +69,31 @@ for await frame in camera.frames {
     // 프레임은 로컬에서 처리하고 보관하지 않습니다.
 }
 ```
+
+## 얼굴 스캔 UI
+
+`FaceScanView`는 카메라 전체 화면, 둥근 얼굴 가이드, 움직이는 스캔 선, 진행 상태, 성공 체크 및 재시도 안내로 구성됩니다. 사용 흐름은 익숙하게 유지하되 Apple 시스템 Face ID 화면이나 Face ID 아이콘으로 오인되지 않도록 별도의 디자인과 문구를 사용합니다.
+
+```swift
+@State private var scanState: FaceScanState = .ready
+
+FaceScanView(
+    cameraSource: camera,
+    state: $scanState,
+    strings: .korean
+)
+```
+
+인식 파이프라인에서 상태를 갱신합니다.
+
+```swift
+scanState = .positioning
+scanState = .scanning(progress: 0.65)
+scanState = .success
+// 또는: .failure(message: "얼굴을 다시 맞춰주세요")
+```
+
+하단에는 “이 iPad 안에서만 처리됩니다”라는 프라이버시 안내가 항상 표시됩니다.
 
 ## 얼굴과 랜드마크 분석
 
