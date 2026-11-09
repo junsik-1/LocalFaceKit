@@ -16,6 +16,9 @@ LocalFaceKit은 일반 전면 RGB 카메라를 사용하며 카메라 프레임,
 ## 현재 구현
 
 - Vision 얼굴 사각형 및 랜드마크 분석
+- 화면 방향을 반영하는 5점 유사 변환 얼굴 정렬
+- 얼굴 수·크기·자세·조명·선명도 품질 필터
+- Vision → 정렬 → Core ML 임베딩 통합 파이프라인
 - Core ML 임베딩 모델 어댑터
 - 임베딩 L2 정규화
 - 1:1 검증과 1:N 식별
@@ -28,7 +31,7 @@ LocalFaceKit은 일반 전면 RGB 카메라를 사용하며 카메라 프레임,
 - 안내, 진행률, 성공·재시도 상태를 제공하는 SwiftUI 얼굴 스캔 화면
 - 런타임 네트워크 API를 거부하는 CI 검사
 
-다음 단계는 5점 얼굴 정렬, 품질 필터, 시간축 합의, RGB 챌린지 기반 라이브니스 신호, iPad 샘플 앱입니다.
+다음 단계는 시간축 합의, RGB 챌린지 기반 라이브니스 신호, iPad 샘플 앱과 실기기 벤치마크입니다.
 
 저장소에는 사전 학습 얼굴 모델이나 실제 얼굴 데이터셋을 포함하지 않습니다. 모델 가중치는 별도의 재배포 권리와 데이터 출처 검토가 필요합니다.
 
@@ -111,18 +114,39 @@ let faces = try await analyzer.analyze(
 
 화면 미러링과 추론 이미지 방향을 분리하고 지원하는 모든 iPad 방향에서 좌표 변환을 테스트해야 합니다.
 
-## 임베딩 모델 실행
+## 품질 판정·정렬·임베딩 실행
 
-입력 얼굴은 모델 규격에 맞게 미리 잘라내고 정렬하고 리사이즈해야 합니다.
+`FaceEmbeddingPipeline`은 카메라 프레임에서 부적합한 얼굴을 먼저 거부하고, 통과한 얼굴을 5점 기준으로 정렬한 뒤 로컬 Core ML 모델을 실행합니다. 미리보기 좌표 변환에 사용한 것과 같은 화면 방향을 전달해야 합니다.
 
 ```swift
+import ImageIO
+import LocalFaceKit
+
 let embedder = try CoreMLFaceEmbedder(
     modelURL: compiledModelURL,
     modelIdentifier: "mobileface-112-v1"
 )
+let aligner = try FivePointFaceAligner(
+    outputSize: embedder.inputImageSize.width
+)
+let pipeline = try FaceEmbeddingPipeline(
+    qualityEvaluator: FaceQualityEvaluator(policy: .standard),
+    aligner: aligner,
+    embedder: embedder
+)
 
-let embedding = try await embedder.embedding(for: alignedFacePixelBuffer)
+let result = try await pipeline.process(
+    pixelBuffer: cameraPixelBuffer,
+    orientation: .leftMirrored
+)
+if case .accepted(let embedding, let quality) = result {
+    print(embedding.values.count, quality.metrics)
+}
 ```
+
+기본 정렬기는 공개된 ArcFace 112×112 기준 좌표를 요청 크기로 확대해 정사각형 BGRA 버퍼를 만듭니다. 반드시 같은 정렬 규격으로 학습된 모델에만 사용해야 합니다. 모델을 불러올 때 이미지 입력 크기를 확인하며, 정렬기 출력 크기가 다르면 프레임 처리 전에 거부합니다.
+
+`FaceQualityPolicy.standard`는 초기 엔지니어링 기본값이며 보안 임계값이 아닙니다. 지원할 iPad와 실제 대상 사용자군에서 자세·조명·선명도·얼굴 크기 제한을 검증하고 보정해야 합니다.
 
 모델 규격과 라이선스 정책은 [Models/README.md](Models/README.md)를 참고하세요.
 

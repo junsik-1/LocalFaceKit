@@ -17,7 +17,7 @@ Production applications must bundle an authorized model in the signed app. `Core
 | Runtime precision | FP16 baseline |
 | Output processing | L2 normalization |
 
-`CoreMLFaceEmbedder` supports custom input and output names. The caller must perform the exact crop, alignment, color conversion, and normalization expected by the model.
+`CoreMLFaceEmbedder` supports custom input and output names, reads the model's declared image dimensions, and rejects pixel buffers with a different size. `FivePointFaceAligner` implements the published ArcFace five-point reference geometry and emits BGRA. Use it only when that geometry and image representation match the model's training contract; otherwise supply preprocessing that exactly matches the authorized model.
 
 ## Required model metadata
 

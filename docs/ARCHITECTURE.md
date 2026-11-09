@@ -76,15 +76,19 @@ No alternative capture backend is planned. This keeps behavior consistent on iPa
 
 ## Analysis and alignment
 
-Vision produces normalized image-space bounding boxes and landmarks. The alignment stage will derive stable eye centers plus nose and mouth anchors, apply a similarity transform, and emit the model's declared input size—initially 112×112 RGB.
+Vision produces normalized image-space bounding boxes and landmarks. `FivePointFaceAligner` derives stable eye centers plus nose and mouth anchors, applies a similarity transform, and emits a square BGRA buffer using the standard ArcFace reference geometry. It applies the same image orientation supplied to Vision before mapping landmarks, so analysis and alignment stay in one coordinate system.
 
-Quality gates should reject:
+`FaceQualityEvaluator` rejects:
 
 - zero or multiple faces during 1:1 enrollment
 - faces that occupy too little of the frame
 - excessive yaw, pitch, or roll
-- blur, clipping, severe occlusion, or poor illumination
-- frames that fail an optional RGB challenge-response check
+- clipping, blur, or poor illumination
+- missing landmarks required by the five-point transform
+
+The current quality score intentionally does not claim to detect severe occlusion or presentation attacks. Those require separately evaluated signals. Frames that fail an optional RGB challenge-response check will be handled by the future liveness stage.
+
+`FaceEmbeddingPipeline` composes Vision analysis, quality evaluation, alignment, and Core ML inference. A rejected frame never reaches the model. The pipeline verifies that the aligner's square output matches the model's declared image input dimensions before it accepts frames.
 
 Every model package needs metadata for color order, normalization, alignment landmarks, input size, output dimension, model identifier, and calibrated thresholds.
 

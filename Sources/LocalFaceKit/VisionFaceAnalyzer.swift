@@ -7,6 +7,11 @@ import Vision
 public struct NormalizedFacePoint: Codable, Equatable, Sendable {
   public let x: Float
   public let y: Float
+
+  public init(x: Float, y: Float) {
+    self.x = x
+    self.y = y
+  }
 }
 
 public struct FaceLandmarks: Codable, Equatable, Sendable {
@@ -22,6 +27,34 @@ public struct FaceLandmarks: Codable, Equatable, Sendable {
   public let medianLine: [NormalizedFacePoint]
   public let outerLips: [NormalizedFacePoint]
   public let innerLips: [NormalizedFacePoint]
+
+  public init(
+    faceContour: [NormalizedFacePoint] = [],
+    leftEye: [NormalizedFacePoint] = [],
+    rightEye: [NormalizedFacePoint] = [],
+    leftEyebrow: [NormalizedFacePoint] = [],
+    rightEyebrow: [NormalizedFacePoint] = [],
+    leftPupil: [NormalizedFacePoint] = [],
+    rightPupil: [NormalizedFacePoint] = [],
+    nose: [NormalizedFacePoint] = [],
+    noseCrest: [NormalizedFacePoint] = [],
+    medianLine: [NormalizedFacePoint] = [],
+    outerLips: [NormalizedFacePoint] = [],
+    innerLips: [NormalizedFacePoint] = []
+  ) {
+    self.faceContour = faceContour
+    self.leftEye = leftEye
+    self.rightEye = rightEye
+    self.leftEyebrow = leftEyebrow
+    self.rightEyebrow = rightEyebrow
+    self.leftPupil = leftPupil
+    self.rightPupil = rightPupil
+    self.nose = nose
+    self.noseCrest = noseCrest
+    self.medianLine = medianLine
+    self.outerLips = outerLips
+    self.innerLips = innerLips
+  }
 }
 
 public struct DetectedFace: Equatable, Sendable {
@@ -31,19 +64,47 @@ public struct DetectedFace: Equatable, Sendable {
   public let yaw: Float?
   public let pitch: Float?
   public let landmarks: FaceLandmarks?
+
+  public init(
+    boundingBox: CGRect,
+    confidence: Float,
+    roll: Float? = nil,
+    yaw: Float? = nil,
+    pitch: Float? = nil,
+    landmarks: FaceLandmarks? = nil
+  ) {
+    self.boundingBox = boundingBox
+    self.confidence = confidence
+    self.roll = roll
+    self.yaw = yaw
+    self.pitch = pitch
+    self.landmarks = landmarks
+  }
 }
 
 /// Serializes Vision requests off the caller's actor.
 public actor VisionFaceAnalyzer {
   public init() {}
 
-  public func analyze(
+  public nonisolated func analyze(
     pixelBuffer: CVPixelBuffer,
     orientation: CGImagePropertyOrientation = .up,
     includeLandmarks: Bool = true
+  ) async throws -> [DetectedFace] {
+    try await analyze(
+      imageBuffer: SendablePixelBuffer(value: pixelBuffer),
+      orientation: orientation,
+      includeLandmarks: includeLandmarks
+    )
+  }
+
+  func analyze(
+    imageBuffer: SendablePixelBuffer,
+    orientation: CGImagePropertyOrientation,
+    includeLandmarks: Bool
   ) throws -> [DetectedFace] {
     let handler = VNImageRequestHandler(
-      cvPixelBuffer: pixelBuffer,
+      cvPixelBuffer: imageBuffer.value,
       orientation: orientation,
       options: [:]
     )

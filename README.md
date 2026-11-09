@@ -18,6 +18,9 @@ LocalFaceKit is an open-source Swift package for building face detection, landma
 Implemented:
 
 - Vision face rectangle and landmark analysis
+- five-point similarity alignment with orientation handling
+- configurable face-count, size, pose, illumination, and sharpness gates
+- end-to-end Vision → alignment → Core ML embedding pipeline
 - Core ML embedding model adapter
 - Unit-normalized face embeddings
 - 1:1 verification and 1:N identification
@@ -32,7 +35,6 @@ Implemented:
 
 Planned:
 
-- five-point face alignment and quality gates
 - temporal consensus over live frames
 - optional RGB challenge-response liveness signals
 - iPad demo application and on-device benchmarks
@@ -57,7 +59,7 @@ Add the package in Xcode, or include it in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/junsik-1/LocalFaceKit.git",
-        from: "0.2.0"
+        from: "0.3.0"
     )
 ]
 ```
@@ -131,11 +133,12 @@ scanState = .success
 
 The view never invokes Face ID and does not use Apple's Face ID glyph. It labels the operation as local face verification and displays an on-device-only privacy message.
 
-### Load a Core ML embedding model
+### Run the quality, alignment, and embedding pipeline
 
-The input face must already be cropped, aligned, and resized to the model's declared image input size.
+`FaceEmbeddingPipeline` accepts one camera frame, rejects unsuitable frames before inference, aligns an accepted face to the standard five-point reference, and invokes a locally bundled Core ML model. Pass the same orientation to the pipeline that you use for preview-coordinate mapping.
 
 ```swift
+import ImageIO
 import LocalFaceKit
 
 let embedder = try CoreMLFaceEmbedder(
@@ -144,9 +147,28 @@ let embedder = try CoreMLFaceEmbedder(
     inputName: "image",
     outputName: "embedding"
 )
+let aligner = try FivePointFaceAligner(
+    outputSize: embedder.inputImageSize.width
+)
+let quality = FaceQualityEvaluator(policy: .standard)
+let pipeline = try FaceEmbeddingPipeline(
+    qualityEvaluator: quality,
+    aligner: aligner,
+    embedder: embedder
+)
 
-let embedding = try await embedder.embedding(for: alignedFacePixelBuffer)
+let result = try await pipeline.process(
+    pixelBuffer: cameraPixelBuffer,
+    orientation: .leftMirrored
+)
+if case .accepted(let embedding, let quality) = result {
+    print(embedding.values.count, quality.metrics)
+}
 ```
+
+The default aligner emits a square BGRA buffer using the published 112×112 ArcFace reference geometry, scaled to the requested output size. Use it only with a model trained for that exact alignment contract. The model image input size is inspected at load time, and a mismatched aligner is rejected before processing frames.
+
+`FaceQualityPolicy.standard` is an initial engineering policy, not a calibrated security threshold. Validate its pose, illumination, sharpness, and face-size limits on each supported iPad and population.
 
 See [Models/README.md](Models/README.md) for the model contract and licensing rules.
 
