@@ -13,6 +13,14 @@ LocalFaceKit is an open-source Swift package for building face detection, landma
 > [!WARNING]
 > LocalFaceKit is an early-stage project for iPads without Face ID hardware. It uses only the ordinary front RGB camera and must not be used as the only factor for high-risk authentication.
 
+## Progress update — 2026-11-10
+
+- Added `FaceEnrollmentSession` for collecting spaced, quality-approved enrollment samples, bounded progress, model/dimension checks, and cancellation reset.
+- Added unit tests for collection, invalid inputs, restart, and enrollment → verification → deletion integration.
+- Added an [iPad integration guide](docs/IPAD_ENROLLMENT.md) connecting the camera, embedding pipeline, scan progress, and template store.
+- Validation: Windows source checks only at implementation time; Swift tests and iOS Simulator compilation require macOS CI. Physical iPad testing has not been performed.
+- Next: standalone iPad demo app, capture orientation/lifecycle validation, temporal verification consensus, and model-specific calibration. A compatible Core ML model is still required.
+
 ## Project status
 
 Implemented:
