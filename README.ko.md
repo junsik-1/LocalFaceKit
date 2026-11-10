@@ -18,7 +18,7 @@ LocalFaceKit은 일반 전면 RGB 카메라를 사용하며 카메라 프레임,
 - `FaceEnrollmentSession` 추가: 품질 검사를 통과한 등록 샘플을 일정 간격으로 수집하고 진행률, 모델·차원 검사, 취소·재시작을 처리합니다.
 - 샘플 수집, 잘못된 입력, 재시작, 등록 → 검증 → 삭제 연결 테스트를 추가했습니다.
 - 카메라·임베딩 파이프라인·화면 진행률·저장소를 연결하는 [iPad 통합 가이드](docs/IPAD_ENROLLMENT.md)를 추가했습니다.
-- 검증 상태: 구현 시점에는 Windows에서 소스 검사만 수행했습니다. Swift 테스트와 iOS Simulator 빌드는 macOS CI에서 확인해야 하며, 실제 iPad에서는 아직 실행하지 않았습니다.
+- 검증 상태: [macOS CI 통과](https://github.com/junsik-1/LocalFaceKit/actions/runs/42765736589). 로컬 전용 소스 검사, Swift 빌드·테스트, iOS Simulator 빌드가 성공했습니다. 실제 iPad에서는 아직 실행하지 않았습니다.
 - 다음 작업: 독립 실행 iPad 데모 앱, 카메라 방향·앱 수명주기 검증, 연속 프레임 인식 결과 합의, 모델별 임계값 보정입니다. 별도의 호환 Core ML 모델이 필요합니다.
 
 ## 현재 구현
